@@ -457,7 +457,7 @@ func serveHTTPApi(req *cmds.Request, cctx *oldcmds.Context) (<-chan error, error
 
 	errc := make(chan error)
 	go func() {
-		errc <- corehttp.Serve(node, apiLis.NetListener(), opts...)
+		errc <- corehttp.Serve(node, manet.NetListener(apiLis), opts...)
 		close(errc)
 	}()
 	return errc, nil
@@ -544,7 +544,7 @@ func serveHTTPGateway(req *cmds.Request, cctx *oldcmds.Context) (<-chan error, e
 
 	errc := make(chan error)
 	go func() {
-		errc <- corehttp.Serve(node, gwLis.NetListener(), opts...)
+		errc <- corehttp.Serve(node, manet.NetListener(gwLis), opts...)
 		close(errc)
 	}()
 	return errc, nil
