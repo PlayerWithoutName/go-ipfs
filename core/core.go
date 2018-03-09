@@ -217,6 +217,9 @@ func (n *IpfsNode) startOnlineServices(ctx context.Context, routingOption Routin
 	if err != nil {
 		return err
 	}
+	if !cfg.Swarm.DisableRelay {
+		addrsFactory = composeAddrsFactory(addrsFactory, filterRelayAddrs)
+	}
 	libp2pOpts = append(libp2pOpts, libp2p.AddrsFactory(addrsFactory))
 
 	connm, err := constructConnMgr(cfg.Swarm.ConnMgr)
