@@ -61,6 +61,32 @@ func (e exitErr) Error() string {
 	return fmt.Sprint("exit code", int(e))
 }
 
+func loadPlugins(repoPath string) (*loader.PluginLoader, error) {
+	pluginpath := filepath.Join(repoPath, "plugins")
+
+	// check if repo is accessible before loading plugins
+	var plugins *loader.PluginLoader
+	ok, err := checkPermissions(repoPath)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		plugins, err = loader.NewPluginLoader(pluginpath)
+		if err != nil {
+			log.Error("error loading plugins: ", err)
+		}
+
+		if err := plugins.Initialize(); err != nil {
+			log.Error("error initializing plugins: ", err)
+		}
+
+		if err := plugins.Run(); err != nil {
+			log.Error("error running plugins: ", err)
+		}
+	}
+	return plugins, nil
+}
+
 // main roadmap:
 // - parse the commandline to get a cmdInvocation
 // - if user requests help, print it and exit.
@@ -112,29 +138,9 @@ func mainRet() int {
 		}
 		log.Debugf("config path is %s", repoPath)
 
-		pluginpath := filepath.Join(repoPath, "plugins")
-
-		// check if repo is accessible before loading plugins
-		var plugins *loader.PluginLoader
-		ok, err := checkPermissions(repoPath)
+		plugins, err := loadPlugins(repoPath)
 		if err != nil {
 			return nil, err
-		}
-		if ok {
-			plugins, err = loader.NewPluginLoader(pluginpath)
-			if err != nil {
-				log.Error("error loading plugins: ", err)
-			}
-
-			err = plugins.Initialize()
-			if err != nil {
-				log.Error("error initializing plugins: ", err)
-			}
-
-			err = plugins.Run()
-			if err != nil {
-				log.Error("error running plugins: ", err)
-			}
 		}
 
 		// this sets up the function that will initialize the node
