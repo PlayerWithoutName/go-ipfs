@@ -112,6 +112,31 @@ func mainRet() int {
 		}
 		log.Debugf("config path is %s", repoPath)
 
+		pluginpath := filepath.Join(repoPath, "plugins")
+
+		// check if repo is accessible before loading plugins
+		var plugins *loader.PluginLoader
+		ok, err := checkPermissions(repoPath)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			plugins, err = loader.NewPluginLoader(pluginpath)
+			if err != nil {
+				log.Error("error loading plugins: ", err)
+			}
+
+			err = plugins.Initialize()
+			if err != nil {
+				log.Error("error initializing plugins: ", err)
+			}
+
+			err = plugins.Run()
+			if err != nil {
+				log.Error("error running plugins: ", err)
+			}
+		}
+
 		// this sets up the function that will initialize the node
 		// this is so that we can construct the node lazily.
 		return &oldcmds.Context{
@@ -131,7 +156,8 @@ func mainRet() int {
 				// ok everything is good. set it on the invocation (for ownership)
 				// and return it.
 				n, err = core.NewNode(ctx, &core.BuildCfg{
-					Repo: r,
+					Repo:    r,
+					Plugins: plugins,
 				})
 				if err != nil {
 					return nil, err
@@ -180,20 +206,6 @@ func makeExecutor(req *cmds.Request, env interface{}) (cmds.Executor, error) {
 	if client != nil && !req.Command.External {
 		exctr = client.(cmds.Executor)
 	} else {
-		cctx := env.(*oldcmds.Context)
-		pluginpath := filepath.Join(cctx.ConfigRoot, "plugins")
-
-		// check if repo is accessible before loading plugins
-		ok, err := checkPermissions(cctx.ConfigRoot)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			if _, err := loader.LoadPlugins(pluginpath); err != nil {
-				log.Warning("error loading plugins: ", err)
-			}
-		}
-
 		exctr = cmds.NewExecutor(req.Root)
 	}
 
