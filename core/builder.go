@@ -15,7 +15,6 @@ import (
 	dag "github.com/ipfs/go-ipfs/merkledag"
 	resolver "github.com/ipfs/go-ipfs/path/resolver"
 	pin "github.com/ipfs/go-ipfs/pin"
-	loader "github.com/ipfs/go-ipfs/plugin/loader"
 	repo "github.com/ipfs/go-ipfs/repo"
 	cfg "github.com/ipfs/go-ipfs/repo/config"
 	"github.com/ipfs/go-ipfs/thirdparty/verifbs"
@@ -49,7 +48,6 @@ type BuildCfg struct {
 	Routing RoutingOption
 	Host    HostOption
 	Repo    repo.Repo
-	Plugins *loader.PluginLoader
 }
 
 func (cfg *BuildCfg) getOpt(key string) bool {

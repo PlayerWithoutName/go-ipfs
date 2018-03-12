@@ -149,6 +149,7 @@ func mainRet() int {
 			ConfigRoot: repoPath,
 			LoadConfig: loadConfig,
 			ReqLog:     &oldcmds.ReqLog{},
+			Plugins:    plugins,
 			ConstructNode: func() (n *core.IpfsNode, err error) {
 				if req == nil {
 					return nil, errors.New("constructing node without a request")
@@ -162,8 +163,7 @@ func mainRet() int {
 				// ok everything is good. set it on the invocation (for ownership)
 				// and return it.
 				n, err = core.NewNode(ctx, &core.BuildCfg{
-					Repo:    r,
-					Plugins: plugins,
+					Repo: r,
 				})
 				if err != nil {
 					return nil, err
