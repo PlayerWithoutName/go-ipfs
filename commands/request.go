@@ -19,7 +19,8 @@ type Context struct {
 	Online     bool
 	ConfigRoot string
 	ReqLog     *ReqLog
-	Plugins    *loader.PluginLoader
+
+	Plugins *loader.PluginLoader
 
 	config     *config.Config
 	LoadConfig func(path string) (*config.Config, error)
