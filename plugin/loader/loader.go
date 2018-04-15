@@ -2,9 +2,11 @@ package loader
 
 import (
 	"fmt"
+	"os"
+
+	"github.com/ipfs/go-ipfs/core/coreapi/interface"
 	"github.com/ipfs/go-ipfs/core/coredag"
 	"github.com/ipfs/go-ipfs/plugin"
-	"os"
 
 	logging "gx/ipfs/QmRb5jh8z2E8hMGN2tkvs1yHynUanqnZ3UeKwgN1i9P1F8/go-log"
 	opentracing "gx/ipfs/QmWLWmRVSiagqP15jczsGME1qpob6HDbtbHAY2he9W5iUo/opentracing-go"
@@ -114,4 +116,12 @@ func runTracerPlugin(pl plugin.PluginTracer) error {
 	}
 	opentracing.SetGlobalTracer(tracer)
 	return nil
+}
+
+func (loader *PluginLoader) ProvideAPI(api iface.CoreAPI) {
+	for _, pl := range loader.plugins {
+		if consumer, ok := pl.(plugin.APIConsumer); ok {
+			consumer.ConsumeAPI(api)
+		}
+	}
 }

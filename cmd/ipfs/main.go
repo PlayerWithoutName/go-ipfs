@@ -36,6 +36,7 @@ import (
 	"gx/ipfs/QmfAkMSt9Fwzk48QDJecPcwCUjnf2uG7MLnmCGTp4C6ouL/go-ipfs-cmds"
 	"gx/ipfs/QmfAkMSt9Fwzk48QDJecPcwCUjnf2uG7MLnmCGTp4C6ouL/go-ipfs-cmds/cli"
 	"gx/ipfs/QmfAkMSt9Fwzk48QDJecPcwCUjnf2uG7MLnmCGTp4C6ouL/go-ipfs-cmds/http"
+	"github.com/ipfs/go-ipfs/core/coreapi"
 )
 
 // log is the command logger
@@ -171,6 +172,8 @@ func mainRet() int {
 				}
 
 				n.SetLocal(local)
+
+				plugins.ProvideAPI(coreapi.NewCoreAPI(n))
 				return n, nil
 			},
 		}, nil
