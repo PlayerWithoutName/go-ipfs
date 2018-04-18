@@ -26,7 +26,7 @@ type Context struct {
 	LoadConfig func(path string) (*config.Config, error)
 
 	node          *core.IpfsNode
-	ConstructNode func() (*core.IpfsNode, error)
+	ConstructNode func(cfg core.BuildCfg, local bool) (*core.IpfsNode, error)
 }
 
 // GetConfig returns the config of the current Command exection
@@ -50,7 +50,7 @@ func (c *Context) GetNode() (*core.IpfsNode, error) {
 		if c.ConstructNode == nil {
 			return nil, errors.New("nil ConstructNode function")
 		}
-		c.node, err = c.ConstructNode()
+		c.node, err = c.ConstructNode(core.BuildCfg{}, true)
 	}
 	return c.node, err
 }

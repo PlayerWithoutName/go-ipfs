@@ -150,26 +150,27 @@ func mainRet() int {
 			LoadConfig: loadConfig,
 			ReqLog:     &oldcmds.ReqLog{},
 			Plugins:    plugins,
-			ConstructNode: func() (n *core.IpfsNode, err error) {
+			ConstructNode: func(cfg core.BuildCfg, local bool) (n *core.IpfsNode, err error) {
 				if req == nil {
 					return nil, errors.New("constructing node without a request")
 				}
 
-				r, err := fsrepo.Open(repoPath)
-				if err != nil { // repo is owned by the node
-					return nil, err
+				if cfg.Repo == nil {
+					r, err := fsrepo.Open(repoPath)
+					if err != nil { // repo is owned by the node
+						return nil, err
+					}
+					cfg.Repo = r
 				}
 
 				// ok everything is good. set it on the invocation (for ownership)
 				// and return it.
-				n, err = core.NewNode(ctx, &core.BuildCfg{
-					Repo: r,
-				})
+				n, err = core.NewNode(ctx, &cfg)
 				if err != nil {
 					return nil, err
 				}
 
-				n.SetLocal(true)
+				n.SetLocal(local)
 				return n, nil
 			},
 		}, nil

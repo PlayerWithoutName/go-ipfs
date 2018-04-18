@@ -267,11 +267,6 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 			return
 		}
 
-		repo, err = fsrepo.Open(cctx.ConfigRoot)
-		if err != nil {
-			re.SetError(err, cmdkit.ErrNormal)
-			return
-		}
 	case nil:
 		break
 	}
@@ -288,8 +283,7 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 	mplex, _ := req.Options[enableMultiplexKwd].(bool)
 
 	// Start assembling node config
-	ncfg := &core.BuildCfg{
-		Repo:      repo,
+	ncfg := core.BuildCfg{
 		Permanent: true, // It is temporary way to signify that node is permanent
 		Online:    !offline,
 		ExtraOpts: map[string]bool{
@@ -332,13 +326,17 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 		return
 	}
 
-	node, err := core.NewNode(req.Context, ncfg)
+	/*node, err := core.NewNode(req.Context, ncfg)
+
+	node.SetLocal(false)*/
+
+	node, err := cctx.ConstructNode(ncfg, false)
+
 	if err != nil {
 		log.Error("error from node construction: ", err)
 		re.SetError(err, cmdkit.ErrNormal)
 		return
 	}
-	node.SetLocal(false)
 
 	if node.PNetFingerprint != nil {
 		fmt.Println("Swarm is limited to private network of peers with the swarm key")
@@ -359,12 +357,8 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 		}
 	}()
 
-	cctx.ConstructNode = func() (*core.IpfsNode, error) {
-		return node, nil
-	}
-
 	// construct api endpoint - every time
-	apiErrc, err := serveHTTPApi(req, cctx)
+	apiErrc, err := serveHTTPApi(req, cctx, node)
 	if err != nil {
 		re.SetError(err, cmdkit.ErrNormal)
 		return
@@ -378,7 +372,7 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 		return
 	}
 	if mount {
-		if err := mountFuse(req, cctx); err != nil {
+		if err := mountFuse(req, cctx, node); err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
 		}
@@ -395,7 +389,7 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 	var gwErrc <-chan error
 	if len(cfg.Addresses.Gateway) > 0 {
 		var err error
-		gwErrc, err = serveHTTPGateway(req, cctx)
+		gwErrc, err = serveHTTPGateway(req, cctx, node)
 		if err != nil {
 			re.SetError(err, cmdkit.ErrNormal)
 			return
@@ -417,7 +411,7 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 }
 
 // serveHTTPApi collects options, creates listener, prints status message and starts serving requests
-func serveHTTPApi(req *cmds.Request, cctx *oldcmds.Context) (<-chan error, error) {
+func serveHTTPApi(req *cmds.Request, cctx *oldcmds.Context, node *core.IpfsNode) (<-chan error, error) {
 	cfg, err := cctx.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("serveHTTPApi: GetConfig() failed: %s", err)
@@ -467,11 +461,6 @@ func serveHTTPApi(req *cmds.Request, cctx *oldcmds.Context) (<-chan error, error
 		opts = append(opts, corehttp.RedirectOption("", cfg.Gateway.RootRedirect))
 	}
 
-	node, err := cctx.ConstructNode()
-	if err != nil {
-		return nil, fmt.Errorf("serveHTTPApi: ConstructNode() failed: %s", err)
-	}
-
 	if err := node.Repo.SetAPIAddr(apiMaddr); err != nil {
 		return nil, fmt.Errorf("serveHTTPApi: SetAPIAddr() failed: %s", err)
 	}
@@ -516,7 +505,7 @@ func printSwarmAddrs(node *core.IpfsNode) {
 }
 
 // serveHTTPGateway collects options, creates listener, prints status message and starts serving requests
-func serveHTTPGateway(req *cmds.Request, cctx *oldcmds.Context) (<-chan error, error) {
+func serveHTTPGateway(req *cmds.Request, cctx *oldcmds.Context, node *core.IpfsNode) (<-chan error, error) {
 	cfg, err := cctx.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("serveHTTPGateway: GetConfig() failed: %s", err)
@@ -558,11 +547,6 @@ func serveHTTPGateway(req *cmds.Request, cctx *oldcmds.Context) (<-chan error, e
 		opts = append(opts, corehttp.RedirectOption("", cfg.Gateway.RootRedirect))
 	}
 
-	node, err := cctx.ConstructNode()
-	if err != nil {
-		return nil, fmt.Errorf("serveHTTPGateway: ConstructNode() failed: %s", err)
-	}
-
 	errc := make(chan error)
 	go func() {
 		errc <- corehttp.Serve(node, gwLis.NetListener(), opts...)
@@ -572,7 +556,7 @@ func serveHTTPGateway(req *cmds.Request, cctx *oldcmds.Context) (<-chan error, e
 }
 
 //collects options and opens the fuse mountpoint
-func mountFuse(req *cmds.Request, cctx *oldcmds.Context) error {
+func mountFuse(req *cmds.Request, cctx *oldcmds.Context, node *core.IpfsNode) error {
 	cfg, err := cctx.GetConfig()
 	if err != nil {
 		return fmt.Errorf("mountFuse: GetConfig() failed: %s", err)
@@ -586,11 +570,6 @@ func mountFuse(req *cmds.Request, cctx *oldcmds.Context) error {
 	nsdir, found := req.Options[ipnsMountKwd].(string)
 	if !found {
 		nsdir = cfg.Mounts.IPNS
-	}
-
-	node, err := cctx.ConstructNode()
-	if err != nil {
-		return fmt.Errorf("mountFuse: ConstructNode() failed: %s", err)
 	}
 
 	err = nodeMount.Mount(node, fsdir, nsdir)
